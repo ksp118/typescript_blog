@@ -23,5 +23,53 @@ body::-webkit-scrollbar {
 }
 
 .layout-container {
-  @apply w-full max-w-7xl mx-auto px-4;
+  @apply w-full max-w-5xl mx-auto px-6;
+}
+
+@layer components {
+  .markdown-content a {
+    @apply text-blue-500;
+  }
+
+  .markdown-content a:hover {
+    @apply text-blue-400;
+  }
+}
+
+h1 {
+  font-size: 2.5rem; /* text-4xl */
+  color: #0a2d4a; /* 네이비 - nav color */
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+h2 {
+  font-size: 2rem; /* custom size between text-2xl and text-3xl */
+  color: #1e4463; /* h1보다 밝은 파랑 */
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+h3 {
+  font-size: 1.5rem; /* text-lg */
+  color: #3d5e73; /* 중간 강조용 파랑 */
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+p {
+  color: #374151; /* Tailwind 기준 text-gray-600 */
+  font-size: 1rem;
+  line-height: 1.75;
+  margin-bottom: 1rem;
+}
+
+strong {
+  color: #1f2937; /* text-gray-800 */
+  font-weight: 700;
+}
+
+em {
+  color: #475569; /* text-slate-600 */
+  font-style: italic;
 }
