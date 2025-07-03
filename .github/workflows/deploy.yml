@@ -1,0 +1,65 @@
+name: Deploy TypeScript Blog to EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+
+    - name: Install Dependencies (monorepo)
+      run: npm install --workspaces
+
+    - name: Build Frontend & Backend
+      run: npm run build
+
+    - name: Upload Project to EC2
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_KEY }}
+        source: "."
+        target: "/home/ksp118/typescript_blog"
+
+    - name: SSH into EC2 and Deploy
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_KEY }}
+        script: |
+          cd /home/ksp118/typescript_blog
+
+          echo "[1] Install server dependencies"
+          cd server
+          npm install
+
+          echo "[2] Transpile backend"
+          npm run build
+          cd ..
+
+          echo "[3] Install frontend dependencies"
+          cd frontend
+          npm install
+
+          echo "[4] Build frontend"
+          npm run build
+          cd ..
+
+          echo "[5] Copy frontend dist to nginx directory"
+          sudo rm -rf /srv/blog/*
+          sudo cp -r frontend/dist/* /srv/blog/
+
+          echo "[6] Restart backend with PM2"
+          pm2 reload ecosystem.config.js --only blog-backend
