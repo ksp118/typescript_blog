@@ -30,16 +30,16 @@ jobs:
           npm install --workspace=server
           npm install --workspace=frontend
 
-      # 4) 서버 빌드
+      # 4) 프론트엔드 빌드
+      - name: Build frontend
+        run: npm run build --workspace=frontend
+
+      # 5) 서버 빌드
       - name: Build server
         run: |
           npm run build --workspace=server
           cd server
           npm ci --omit=dev --ignore-scripts
-
-      # 5) 프론트엔드 빌드
-      - name: Build frontend
-        run: npm run build --workspace=frontend
 
       # 6) 배포 번들 준비
       - name: Prepare deployment bundle
