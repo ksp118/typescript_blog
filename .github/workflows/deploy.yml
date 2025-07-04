@@ -2,75 +2,120 @@ name: Deploy TypeScript Blog to EC2
 
 on:
   push:
-    branches: [main] # main 브랜치에 push 될 때마다 실행
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest # GitHub가 제공하는 Ubuntu VM
+    runs-on: ubuntu-latest
 
     steps:
-      # 1) 소스 받아오기 --------------------------------------------------------
+      # 1) 소스 코드 체크아웃
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 2) Node 20 설치 (빌드용) -------------------------------------------------
+      # 2) Node.js 설정
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
-      # 3) 서버(Express) 의존성 설치 + 트랜스파일 -------------------------------
-      - name: Install & build server
+      # 3) 의존성 설치
+      - name: Install dependencies
         run: |
+          npm install
           npm install --workspace=server
-          npm run build --workspace=server          # tsc
-          # 실행시엔 devDependencies 필요 없으므로 제거
-          npm prune --workspace=server --omit=dev
-
-      # 4) 프론트엔드(Vite) 의존성 설치 + 빌드 ---------------------------------
-      - name: Install & build frontend
-        run: |
           npm install --workspace=frontend
-          npm run build --workspace=frontend        # tsc -b && vite build
 
-      # 5) 배포용 디렉터리 구성 --------------------------------------------------
-      - name: Prepare deploy bundle
+      # 4) 서버 빌드
+      - name: Build server
         run: |
-          mkdir -p deploy/server deploy/frontend
-          # 서버 실행에 필요한 파일
-          cp -r server/dist deploy/server/
-          cp server/package*.json deploy/server/
-          cp server/ecosystem.config.js deploy/
-          # 프론트엔드 정적 자산
-          cp -r frontend/dist deploy/frontend/
+          npm run build --workspace=server
+          cd server
+          npm ci --omit=dev --ignore-scripts
 
-      # 6) EC2로 빌드 결과 업로드 ----------------------------------------------
-      - name: Upload bundle to EC2
-        uses: appleboy/scp-action@master
+      # 5) 프론트엔드 빌드
+      - name: Build frontend
+        run: npm run build --workspace=frontend
+
+      # 6) 배포 번들 준비
+      - name: Prepare deployment bundle
+        run: |
+          # 서버 배포 준비
+          mkdir -p deploy/app
+          cp -r server/dist deploy/app/
+          cp -r server/node_modules deploy/app/
+          cp server/package.json deploy/app/
+
+          # 프론트엔드 배포 준비
+          mkdir -p deploy/static
+          cp -r frontend/dist/* deploy/static/
+
+          # PM2 설정 파일 (경로 수정)
+          cat > deploy/ecosystem.config.js << 'EOF'
+          module.exports = {
+            apps: [
+              {
+                name: "blog-backend",
+                script: "/home/ksp118/app/dist/server.js",
+                cwd: "/home/ksp118/app",
+                watch: false,
+                exec_mode: "cluster",
+                instances: "max",
+                env: {
+                  NODE_ENV: "production",
+                },
+                output: "/home/ksp118/logs/pm2/console.log",
+                error: "/home/ksp118/logs/pm2/consoleError.log",
+              },
+            ],
+          };
+          EOF
+
+      # 7) EC2에 배포
+      - name: Deploy to EC2
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
           source: "deploy/*"
-          target: "/home/ksp118/typescript_blog"
+          target: "/tmp/blog-deploy"
+          strip_components: 1
 
-      # 7) EC2에서 의존성 설치(서버만) + 정적 자산 배치 + PM2 재시작 --------------
-      - name: Finalise on EC2 (install & restart)
-        uses: appleboy/ssh-action@master
+      # 8) EC2에서 배포 완료
+      - name: Finalize deployment on EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
           script: |
             set -e
-            echo "[1] Install server production deps"
-            cd /home/ksp118/typescript_blog/server
-            npm ci --omit=dev
 
-            echo "[2] Deploy frontend to nginx directory"
+            echo "🚀 Starting deployment..."
+
+            # 기존 파일 정리 및 새 파일 배치
+            echo "📁 Cleaning up old files..."
+            rm -rf /home/ksp118/app
             rm -rf /srv/blog/*
-            cp -r ../frontend/dist/* /srv/blog/
 
-            echo "[3] Restart backend with PM2"
-            cd /home/ksp118/typescript_blog
-            pm2 reload server/ecosystem.config.js --only blog-backend
+            echo "📦 Deploying new files..."
+            mv /tmp/blog-deploy/app /home/ksp118/
+            cp -r /tmp/blog-deploy/static/* /srv/blog/
+            cp /tmp/blog-deploy/ecosystem.config.js /home/ksp118/
+
+            # 임시 파일 정리
+            rm -rf /tmp/blog-deploy
+
+            echo "🔄 Restarting PM2..."
+            # PM2 프로세스 재시작 (존재하지 않으면 시작)
+            pm2 delete blog-backend 2>/dev/null || true
+            pm2 start /home/ksp118/ecosystem.config.js
+            pm2 save
+
+            echo "✅ Deployment completed successfully!"
+            pm2 status
