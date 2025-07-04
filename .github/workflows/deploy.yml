@@ -68,8 +68,8 @@ jobs:
             npm ci --omit=dev
 
             echo "[2] Deploy frontend to nginx directory"
-            sudo rm -rf /srv/blog/*
-            sudo cp -r ../frontend/dist/* /srv/blog/
+            rm -rf /srv/blog/*
+            cp -r ../frontend/dist/* /srv/blog/
 
             echo "[3] Restart backend with PM2"
             cd /home/ksp118/typescript_blog
