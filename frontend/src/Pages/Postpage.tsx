@@ -11,7 +11,7 @@ export function PostPage() {
 
   useEffect(() => {
     axios
-      .get<ApiResponse<Post>>(`http://localhost:3000/api/posts/${slug}`)
+      .get<ApiResponse<Post>>(`/api/posts/${slug}`)
       .then((res) => {
         if (res.data.success) {
           setPost(res.data.data);

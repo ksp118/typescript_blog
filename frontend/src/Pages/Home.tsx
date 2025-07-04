@@ -11,7 +11,7 @@ export const Home = () => {
 
   useEffect(() => {
     axios
-      .get<ApiResponse<Post[]>>("http://localhost:3000/api/posts")
+      .get<ApiResponse<Post[]>>("/api/posts")
       .then((res) => {
         if (res.data.success) {
           setPosts(res.data.data);
