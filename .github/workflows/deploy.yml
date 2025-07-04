@@ -73,4 +73,4 @@ jobs:
 
             echo "[3] Restart backend with PM2"
             cd /home/ksp118/typescript_blog
-            pm2 reload ecosystem.config.js --only blog-backend
+            pm2 reload server/ecosystem.config.js --only blog-backend
