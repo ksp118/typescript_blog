@@ -38,8 +38,7 @@ jobs:
       - name: Build server
         run: |
           npm run build --workspace=server
-          cd server
-          npm ci --omit=dev --ignore-scripts
+          npm ci --omit=dev --ignore-scripts --workspace=server
 
       # 6) 배포 번들 준비
       - name: Prepare deployment bundle
@@ -47,33 +46,14 @@ jobs:
           # 서버 배포 준비
           mkdir -p deploy/app
           cp -r server/dist deploy/app/
-          cp -r server/node_modules deploy/app/
-          cp server/package.json deploy/app/
+          cp server/package*.json deploy/app/
+
+          # PM2 설정 파일
+          cp server/ecosystem.config.js deploy/app/
 
           # 프론트엔드 배포 준비
           mkdir -p deploy/static
           cp -r frontend/dist/* deploy/static/
-
-          # PM2 설정 파일 (경로 수정)
-          cat > deploy/ecosystem.config.js << 'EOF'
-          module.exports = {
-            apps: [
-              {
-                name: "blog-backend",
-                script: "/home/ksp118/app/dist/server.js",
-                cwd: "/home/ksp118/app",
-                watch: false,
-                exec_mode: "cluster",
-                instances: "max",
-                env: {
-                  NODE_ENV: "production",
-                },
-                output: "/home/ksp118/logs/pm2/console.log",
-                error: "/home/ksp118/logs/pm2/consoleError.log",
-              },
-            ],
-          };
-          EOF
 
       # 7) EC2에 배포
       - name: Deploy to EC2
@@ -94,28 +74,42 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            set -e
+            set -euo pipefail
 
             echo "🚀 Starting deployment..."
 
-            # 기존 파일 정리 및 새 파일 배치
-            echo "📁 Cleaning up old files..."
-            rm -rf /home/ksp118/app
-            rm -rf /srv/blog/*
+            # ── 변수 ─────────────────────────────────
+            APP_ROOT="/srv/blog-backend"
+            NEW_RELEASE="/tmp/blog-deploy/app"
+            STATIC_SRC="/tmp/blog-deploy/static"
+            TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+            BACKUP_DIR="$APP_ROOT/releases/${TIMESTAMP}_prev"
 
-            echo "📦 Deploying new files..."
-            mv /tmp/blog-deploy/app /home/ksp118/
-            cp -r /tmp/blog-deploy/static/* /srv/blog/
-            cp /tmp/blog-deploy/ecosystem.config.js /home/ksp118/
+            # ── 디렉터리 준비 ────────────────────────
+            mkdir -p "$APP_ROOT/releases" "$APP_ROOT/logs/pm2" /srv/blog
+            echo "📁 Cleaning up: moving current to backup"
+            if [ -L "$APP_ROOT/current" ]; then
+              mv "$(readlink -f "$APP_ROOT/current")" "$BACKUP_DIR"
+            fi
 
-            # 임시 파일 정리
-            rm -rf /tmp/blog-deploy
+            # ── 새 릴리스 배치 ───────────────────────
+            NEW_DIR="$APP_ROOT/releases/${TIMESTAMP}"
+            mv "$NEW_RELEASE" "$NEW_DIR"
+            ln -sfn "$NEW_DIR" "$APP_ROOT/current"
 
-            echo "🔄 Restarting PM2..."
-            # PM2 프로세스 재시작 (존재하지 않으면 시작)
+            # 프런트엔드 정적 파일
+            rsync -a --delete "$STATIC_SRC/" /srv/blog/
+
+            # ── 의존성 설치 ──────────────────────────
+            cd "$APP_ROOT/current"
+            npm ci --omit=dev --ignore-scripts
+
+            # ── PM2 리로드 ──────────────────────────
             pm2 delete blog-backend 2>/dev/null || true
-            pm2 start /home/ksp118/ecosystem.config.js
+            pm2 start "$APP_ROOT/current/ecosystem.config.js"
             pm2 save
 
-            echo "✅ Deployment completed successfully!"
-            pm2 status
+            echo "✅ Deployment completed!"
+
+            # ── cleanup ─────────────────────────────
+            rm -rf /tmp/blog-deploy
