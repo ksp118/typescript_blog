@@ -98,7 +98,7 @@ jobs:
             ln -sfn "$NEW_DIR" "$APP_ROOT/current"
 
             # ── .env 배치 ────────────────────────────
-            cp "/home/${{ secrets.EC2_USERNAME }}/secrets/.env" "$APP_ROOT/current/.env"
+            cp "/home/${{ secrets.EC2_USERNAME }}/secrets/.env.prod" "$APP_ROOT/current/.env"
 
             # 프런트엔드 정적 파일
             rsync -a --delete "$STATIC_SRC/" /srv/blog/
@@ -109,7 +109,7 @@ jobs:
 
             # ── PM2 리로드 ──────────────────────────
             pm2 delete blog-backend 2>/dev/null || true
-            pm2 start "$APP_ROOT/current/ecosystem.config.js"
+            pm2 start "$APP_ROOT/current/ecosystem.config.js" --env production
             pm2 save
 
             echo "✅ Deployment completed!"

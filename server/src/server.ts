@@ -1,12 +1,22 @@
 import express from "express";
 import cors from "cors";
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config();
+
+const envFile =
+  process.env.NODE_ENV === "production" ? ".env.prod" : ".env.dev";
+dotenv.config({ path: path.resolve(__dirname, "..", envFile) });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const corsOrigin = process.env.CORS_ORIGIN || "";
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: corsOrigin,
     credentials: true,
   })
 );
