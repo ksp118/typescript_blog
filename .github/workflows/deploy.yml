@@ -98,7 +98,7 @@ jobs:
             ln -sfn "$NEW_DIR" "$APP_ROOT/current"
 
             # ── .env 배치 ────────────────────────────
-            cp "/home/${{ secrets.EC2_USERNAME }}/secrets/.env.prod" "$APP_ROOT/current/.env"
+            cp "/home/${{ secrets.EC2_USERNAME }}/secrets/.env" "$APP_ROOT/current/.env.prod"
 
             # 프런트엔드 정적 파일
             rsync -a --delete "$STATIC_SRC/" /srv/blog/
