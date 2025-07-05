@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: "blog-backend",
-      script: "/srv/blog-backend/dist/server.js", // 트랜스파일된 JS 엔트리 포인트
-      cwd: "dist/server.js", // 현재 디렉토리 기준
+      script: "/srv/blog-backend/server.js", // 트랜스파일된 JS 엔트리 포인트
+      cwd: "/srv/blog-backend", // 현재 디렉토리 기준
 
       watch: false,
       exec_mode: "cluster", // 여러 CPU 코어 활용
