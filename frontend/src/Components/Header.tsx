@@ -52,7 +52,9 @@ export const Header = () => {
           >
             <ul className="space-y-1">
               <li>
-                <Link to="/login">Login</Link>
+                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                  Login
+                </Link>
               </li>
             </ul>
           </div>

@@ -46,7 +46,7 @@ export const Home = () => {
           </p>
         </div>
         <img
-          className="w-72 h-fit rounded-xl order-[-1] md:order-none"
+          className="w-72 h-fit rounded-xl order-[-1] md:order-none my-2"
           src="/img/main_img.jpg"
           alt="it's me"
         />
