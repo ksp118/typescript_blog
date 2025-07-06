@@ -29,7 +29,7 @@ export function PostPage() {
   if (!post) return <p>Loading...</p>;
 
   return (
-    <div className="layout-container my-10">
+    <div className="layout-container min-h-screen my-10">
       <div className="bg-[#f9f5ee] rounded-xl">
         <div className="px-3 py-5">
           <div>

@@ -38,7 +38,7 @@ export const Home = () => {
 
   return (
     <div className="layout-container">
-      <div className="flex flex-col md:flex-row items-center justify-center md:justify-between min-h-[calc(100vh-var(--header-height))] gap-8 text-center md:text-left">
+      <div className="flex flex-col md:flex-row items-center justify-center md:justify-between min-h-[calc(100dvh-var(--header-height))] gap-8 text-center md:text-left">
         <div className="flex flex-col gap-4">
           <p className="text-7xl text-black">Gyuho Lee</p>
           <p className="text-xl">

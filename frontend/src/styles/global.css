@@ -58,7 +58,6 @@ h3 {
 }
 
 p {
-  color: #374151; /* Tailwind 기준 text-gray-600 */
   font-size: 1rem;
   line-height: 1.75;
   margin-bottom: 1rem;
