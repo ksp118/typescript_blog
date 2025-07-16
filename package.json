@@ -3,20 +3,19 @@
   "private": true,
   "version": "1.0.0",
   "main": "index.js",
-  "workspaces": [
-    "frontend",
-    "server"
-  ],
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run frontend\"",
     "server": "cd server && npm run dev",
     "frontend": "cd frontend && npm run dev",
-    "build": "npm run build --workspace=server && npm run build --workspace=frontend"
+    "build": "npm run build:server && npm run build:frontend",
+    "build:server": "cd server && npm run build",
+    "build:frontend": "cd frontend && npm run build"
   },
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "first blog project",
   "dependencies": {
     "concurrently": "^9.1.2"
-  }
+  },
+  "devDependencies": {}
 }

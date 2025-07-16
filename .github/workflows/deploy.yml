@@ -12,54 +12,59 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) 소스 코드 체크아웃
+      # 1) 소스 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Node.js 설정
+      # 2) Node.js 설정 + npm 캐시
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      # 3) 의존성 설치
-      - name: Install dependencies
+      # 3) 의존성 설치 ─ 루트 → server → frontend
+      - name: Install root dependencies (concurrently 등)
+        run: npm install
+
+      - name: Install server dependencies
         run: |
+          cd server
           npm install
-          npm install --workspace=server
-          npm install --workspace=frontend
 
-      # 4) 프론트엔드 빌드
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      # 4) 빌드
       - name: Build frontend
-        run: npm run build --workspace=frontend
+        run: |
+          cd frontend
+          npm run build
 
-      # 5) 서버 빌드
       - name: Build server
         run: |
-          npm run build --workspace=server
-          npm ci --omit=dev --ignore-scripts --workspace=server
+          cd server
+          npm run build          # tsc
+          # dist/ 폴더가 생성됨
 
-      # 6) 배포 번들 준비
+      # 5) 배포 번들 구성
       - name: Prepare deployment bundle
         run: |
-          # 서버 배포 준비
+          # 서버 번들
           mkdir -p deploy/app deploy/app/sql
           cp -r server/dist deploy/app/
           cp server/package*.json deploy/app/
-
-          # sql문 저장
           cp -r server/sql deploy/app/sql
-
-          # PM2 설정 파일
           cp server/ecosystem.config.js deploy/app/
 
-          # 프론트엔드 배포 준비
+          # 프런트엔드 정적 파일
           mkdir -p deploy/static
           cp -r frontend/dist/* deploy/static/
 
-      # 7) EC2에 배포
-      - name: Deploy to EC2
+      # 6) EC2 전송
+      - name: Upload bundle to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -69,7 +74,7 @@ jobs:
           target: "/tmp/blog-deploy"
           strip_components: 1
 
-      # 8) EC2에서 배포 완료
+      # 7) EC2 배포 스크립트 실행
       - name: Finalize deployment on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -78,45 +83,38 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             set -euo pipefail
-
             echo "🚀 Starting deployment..."
 
-            # ── 변수 ─────────────────────────────────
             APP_ROOT="/srv/blog-backend"
             NEW_RELEASE="/tmp/blog-deploy/app"
             STATIC_SRC="/tmp/blog-deploy/static"
-            TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-            BACKUP_DIR="$APP_ROOT/releases/${TIMESTAMP}_prev"
+            TS=$(date +"%Y%m%d_%H%M%S")
+            BACKUP_DIR="$APP_ROOT/releases/${TS}_prev"
 
-            # ── 디렉터리 준비 ────────────────────────
+            # ─ 구조 준비
             mkdir -p "$APP_ROOT/releases" "$APP_ROOT/logs/pm2" /srv/blog
             echo "📁 Cleaning up: moving current to backup"
             if [ -L "$APP_ROOT/current" ]; then
               mv "$(readlink -f "$APP_ROOT/current")" "$BACKUP_DIR"
             fi
 
-            # ── 새 릴리스 배치 ───────────────────────
-            NEW_DIR="$APP_ROOT/releases/${TIMESTAMP}"
+            NEW_DIR="$APP_ROOT/releases/${TS}"
             mv "$NEW_RELEASE" "$NEW_DIR"
             ln -sfn "$NEW_DIR" "$APP_ROOT/current"
 
-            # ── .env 배치 ────────────────────────────
+            # .env 배치
             cp "/home/${{ secrets.EC2_USERNAME }}/secrets/.env" "$APP_ROOT/current/.env.prod"
 
-            # 프런트엔드 정적 파일
+            # 프런트 정적 파일 동기화
             rsync -a --delete "$STATIC_SRC/" /srv/blog/
 
-            # ── 의존성 설치 ──────────────────────────
+            # 의존성 (prod) 설치
             cd "$APP_ROOT/current"
             npm ci --omit=dev --ignore-scripts
 
-            # ── PM2 리로드 ──────────────────────────
+            # PM2 리로드
             pm2 delete blog-backend 2>/dev/null || true
             pm2 start "$APP_ROOT/current/ecosystem.config.js" --env production
             pm2 save
 
             echo "✅ Deployment completed!"
-
-            git pull 
-            # ── cleanup ─────────────────────────────
-            rm -rf /tmp/blog-deploy
