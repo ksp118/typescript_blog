@@ -1,4 +1,40 @@
+import { useState } from "react";
+import axios from "axios";
+import type { ApiResponse } from "../types/api";
+import type { LoginResponse } from "../types/auth";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+
 export function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const { refresh } = useAuth();
+
+  const navigate = useNavigate();
+
+  const handleLogin = async () => {
+    try {
+      const res = await axios.post<ApiResponse<LoginResponse>>(
+        "/api/auth/login",
+        { username, password },
+        { withCredentials: true }
+      );
+
+      if (res.data.success) {
+        setErrorMsg("");
+        refresh();
+        navigate("/");
+      } else {
+        setErrorMsg(res.data.error || "Login Failed.");
+      }
+    } catch (err: any) {
+      console.error("Login Failed:", err);
+      setErrorMsg(err.response?.data?.error || "Internal error.");
+    }
+  };
+
   return (
     <div
       className="
@@ -30,8 +66,9 @@ export function LoginPage() {
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Username</span>
             <input
-              id="username"
               type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="your@email.com"
               className="
                 mt-2 w-full
@@ -47,8 +84,9 @@ export function LoginPage() {
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Password</span>
             <input
-              id="password"
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="
                 mt-2 w-full
@@ -60,9 +98,17 @@ export function LoginPage() {
             />
           </label>
 
-          {/* Submit 버튼 (동작은 없음) */}
+          {errorMsg && (
+            <p className="text-red-500 text-sm text-center">{errorMsg}</p>
+          )}
+
+          {/* Submit 버튼 */}
           <button
-            type="button"
+            type="submit"
+            onClick={(e) => {
+              e.preventDefault();
+              handleLogin();
+            }}
             className="
               w-full
               rounded-md bg-amber-500 hover:bg-amber-600
@@ -77,9 +123,12 @@ export function LoginPage() {
         {/* 보조 링크 */}
         <div className="mt-6 text-center text-sm text-gray-600">
           Don’t have an account?{" "}
-          <a href="#" className="font-medium text-amber-600 hover:underline">
+          <Link
+            to="/signup"
+            className="font-medium text-amber-600 hover:underline"
+          >
             Sign&nbsp;up
-          </a>
+          </Link>
         </div>
       </div>
     </div>

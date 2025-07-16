@@ -44,9 +44,12 @@ jobs:
       - name: Prepare deployment bundle
         run: |
           # 서버 배포 준비
-          mkdir -p deploy/app
+          mkdir -p deploy/app deploy/app/sql
           cp -r server/dist deploy/app/
           cp server/package*.json deploy/app/
+
+          # sql문 저장
+          cp -r server/sql deploy/app/sql
 
           # PM2 설정 파일
           cp server/ecosystem.config.js deploy/app/
@@ -114,5 +117,6 @@ jobs:
 
             echo "✅ Deployment completed!"
 
+            git pull 
             # ── cleanup ─────────────────────────────
             rm -rf /tmp/blog-deploy

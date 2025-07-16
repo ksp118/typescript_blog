@@ -1,0 +1,9 @@
+CREATE TABLE sessions (
+  session_id BINARY(16) PRIMARY KEY,
+  user_id BINARY(16) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

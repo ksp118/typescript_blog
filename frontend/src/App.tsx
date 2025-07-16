@@ -4,21 +4,26 @@ import { Home } from "./Pages/Home";
 import { Footer } from "./Components/Footer";
 import { PostPage } from "./Pages/Postpage";
 import { LoginPage } from "./Pages/LoginPage";
+import { SignUpPage } from "./Pages/SignUpPage";
+import { AuthProvider } from "./contexts/AuthContext";
 
 export default function App() {
   return (
-    <Router>
-      <div>
-        <Header />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/post/:slug" element={<PostPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          {/*<Route path="/write" element={<Editor />} />
-            <Route path="/register" element={<Register />} /> */}
-        </Routes>
-        <Footer />
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div>
+          <Header />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/post/:slug" element={<PostPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
+            {/*<Route path="/write" element={<Editor />} />
+             */}
+          </Routes>
+          <Footer />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }

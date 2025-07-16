@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
-import { pool } from "../db";
+import { pool } from "@/db";
 
-import { Post } from "../types/post";
-import { ApiResponse } from "../types/api";
+import { Post } from "@/types/post";
+import { ApiResponse } from "@/types/api";
 
 const router = Router();
 
