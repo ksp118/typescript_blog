@@ -24,9 +24,6 @@ jobs:
           cache: "npm"
 
       # 3) 의존성 설치 ─ 루트 → server → frontend
-      - name: Install root dependencies (concurrently 등)
-        run: npm install
-
       - name: Install server dependencies
         run: |
           cd server
