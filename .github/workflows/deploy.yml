@@ -108,7 +108,7 @@ jobs:
 
             # 의존성 (prod) 설치
             cd "$APP_ROOT/current"
-            npm ci --omit=dev --ignore-scripts
+            npm ci --omit=dev
 
             # PM2 리로드
             pm2 delete blog-backend 2>/dev/null || true
