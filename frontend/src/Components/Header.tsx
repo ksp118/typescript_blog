@@ -31,7 +31,7 @@ export const Header = () => {
           Gyuho Lee
         </Link>
         <div className="flex items-center space-x-4">
-          {/* 로그인 유저 인사말 */}
+          {/* 로그인 유저 인사말. */}
           {user && (
             <span className="text-white">
               안녕하세요, <b>{user.nickname}</b>님
