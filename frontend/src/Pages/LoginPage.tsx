@@ -1,37 +1,38 @@
-import { useState } from "react";
-import axios from "axios";
-import type { ApiResponse } from "../types/api";
-import type { LoginResponse } from "../types/auth";
+import { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { AuthContext } from "../contexts/AuthContext";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { refresh } = useAuth();
+  const auth = useContext(AuthContext);
+  if (!auth) {
+    throw new Error("LoginPage must be used within an AuthProvider");
+  }
+  const { login } = auth;
 
   const navigate = useNavigate();
 
   const handleLogin = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
-      const res = await axios.post<ApiResponse<LoginResponse>>(
-        "/api/auth/login",
-        { username, password },
-        { withCredentials: true }
-      );
-
-      if (res.data.success) {
+      const result = await login(username, password);
+      if (result.ok) {
         setErrorMsg("");
-        refresh();
         navigate("/");
-      } else {
-        setErrorMsg(res.data.error || "Login Failed.");
+        return;
       }
+
+      setErrorMsg(result.message);
     } catch (err: any) {
       console.error("Login Failed:", err);
       setErrorMsg(err.response?.data?.error || "Internal error.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -115,8 +116,9 @@ export function LoginPage() {
               py-2 text-white font-semibold
               transition-colors
             "
+            disabled={isSubmitting}
           >
-            Log&nbsp;in
+            {isSubmitting ? "Logging in..." : "Log in"}
           </button>
         </form>
 

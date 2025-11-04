@@ -1,52 +1,96 @@
-// src/contexts/AuthContext.tsx
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import axios from "axios";
 import type { LoginResponse } from "../types/auth";
 import type { ApiResponse } from "../types/api";
 
-interface AuthContextType {
+interface AuthContextValue {
   user: LoginResponse | null;
-  refresh: () => void;
+  isChecking: boolean;
+  login: (
+    username: string,
+    password: string
+  ) => Promise<{ ok: true } | { ok: false; message: string }>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<LoginResponse | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
 
-  const refresh = () => {
-    axios
-      .get<ApiResponse<LoginResponse>>("/api/auth/status", {
-        withCredentials: true,
-      })
-      .then((res) => {
-        if (res.data.success) {
-          setUser(res.data.data);
-        } else {
-          setUser(null);
-        }
-      })
-      .catch(() => setUser(null));
-  };
-
-  const logout = async () => {
+  const refresh = useCallback(async () => {
+    setIsChecking(true);
     try {
-      await axios.post("/api/auth/logout", null, {
+      const res = await axios.get<ApiResponse<LoginResponse>>("/api/auth/status", {
         withCredentials: true,
       });
+
+      if (res.data.success) {
+        setUser(res.data.data);
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        setUser(null);
+      } else {
+        console.error("Failed to check auth status", error);
+      }
+    } finally {
+      setIsChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const login = useCallback<
+    AuthContextValue["login"]
+  >(async (username, password) => {
+    try {
+      const res = await axios.post<ApiResponse<LoginResponse>>("/api/auth/login", {
+        username,
+        password,
+      }, {
+        withCredentials: true,
+      });
+
+      if (res.data.success) {
+        setUser(res.data.data);
+        return { ok: true } as const;
+      }
+
+      return {
+        ok: false as const,
+        message: res.data.error ?? "Login failed.",
+      };
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.error ?? "Internal error."
+        : "Internal error.";
+
+      return { ok: false as const, message };
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await axios.post("/api/auth/logout", null, { withCredentials: true });
+    } catch (error) {
+      console.error("Failed to logout", error);
     } finally {
       setUser(null);
     }
-  };
-
-  useEffect(() => {
-    refresh(); // 초기 mount 시 로그인 상태 확인
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, refresh, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, isChecking, login, logout, refresh }),
+    [user, isChecking, login, logout, refresh]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
