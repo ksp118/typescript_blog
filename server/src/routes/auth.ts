@@ -133,7 +133,7 @@ router.post("/login", async (req: Request, res: Response) => {
     //set cookie
     res.cookie("session_id", sessionId, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       expires: expiresAt,
     });
@@ -180,7 +180,7 @@ router.post("/logout", async (req: Request, res: Response) => {
 
     res.clearCookie("session_id", {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
 
@@ -201,7 +201,7 @@ router.get("/status", async (req: Request, res: Response) => {
   const sessionIdRaw = req.cookies?.session_id;
 
   if (!sessionIdRaw) {
-    return res.status(401).json({
+    return res.json({
       success: false,
       error: "not logged in",
     } satisfies ApiResponse<null>);
@@ -227,7 +227,7 @@ router.get("/status", async (req: Request, res: Response) => {
     const session = rows[0];
 
     if (!session || session.expires_at < new Date()) {
-      return res.status(401).json({
+      return res.json({
         success: false,
         error: "session expired or invalid",
       } satisfies ApiResponse<null>);

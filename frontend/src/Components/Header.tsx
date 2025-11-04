@@ -1,13 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { LuSquareMenu } from "react-icons/lu";
-import { useAuth } from "../hooks/useAuth";
+import { AuthContext } from "../contexts/AuthContext";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const { user, logout } = useAuth();
+  const auth = useContext(AuthContext);
+  if (!auth) {
+    throw new Error("Header must be used within an AuthProvider");
+  }
+
+  const { user, logout } = auth;
 
   //detect outer area of menu
   useEffect(() => {
@@ -63,7 +68,7 @@ export const Header = () => {
                 {user ? (
                   <button
                     onClick={() => {
-                      logout();
+                      void logout();
                       setIsMenuOpen(false);
                     }}
                   >
